@@ -52,8 +52,6 @@ public final class BLESerialManager: NSObject {
     // MARK: - Members
     
     public  var serialServiceUUID             =  CBUUID(string: "FFE0")
-    public  var serialCharacteristicUUID      =  CBUUID(string: "FFE1")
-    
     public  weak var scanDelegate:               BLESerialManagerScanDelegate?
     
     

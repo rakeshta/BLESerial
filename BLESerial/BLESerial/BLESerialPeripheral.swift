@@ -181,15 +181,14 @@ extension BLESerialPeripheral: CBPeripheralDelegate {
         
         
         // Log characteristics & locate the serial characteristic
-        if  let characteristics = service.characteristics {
+        if  let characteristics = service.characteristics where characteristics.count > 0 {
             DDLogVerbose("\(CurrentFileName()): Discovered characteristics for service - \(service.UUID)")
             DDLogVerbose("\t Characteristics - \(characteristics)")
             
-            // One of them maybe the TX RX characteristic
-            for ch in characteristics {
-                if  ch.UUID == serialManager.serialCharacteristicUUID {
-                    serialCharacteristic = ch
-                }
+            // Usually the serial service has only 1 characteristic. That will
+            // be the one on which we transmit & receive
+            if  service.UUID == serialManager.serialServiceUUID {
+                serialCharacteristic = characteristics[0]
             }
         }
         
