@@ -290,6 +290,74 @@ extension BLESerialPeripheral {
 }
 
 
+// MARK: - Writing Data
+
+extension BLESerialPeripheral {
+    
+    /// Returns `true` if data can be written to the serial peripheral.
+    public var canWrite: Bool {
+        assertIsMainThread()
+        return cbPeripheral.state == .Connected && serialCharacteristic != nil
+    }
+    
+    // MARK: -
+    
+    /// Writes a byte of data into the serial peripheral.
+    ///
+    /// - parameter byte: A byte of data to write.
+    ///
+    /// - returns: `true` if data was written.
+    public func writeByte(byte: Int8) -> Bool {
+        return writeData(NSData(bytes: [byte], length: 1))
+    }
+    
+    /// Writes the given data into the serial peripheral.
+    ///
+    /// - parameter dat: The data to write.
+    ///
+    /// - returns: `true` if data was written.
+    public func writeData(data: NSData) -> Bool {
+        assertIsMainThread()
+
+        // Abort if not connected
+        if  cbPeripheral.state != .Connected {
+            return false
+        }
+        
+        // Get serial characteristic
+        guard let char = serialCharacteristic else {
+            return false
+        }
+        
+        // Write data
+        let writeType = char.properties.contains(.WriteWithoutResponse) ? CBCharacteristicWriteType.WithoutResponse : CBCharacteristicWriteType.WithResponse
+        cbPeripheral.writeValue(data, forCharacteristic: char, type: writeType)
+        
+        // Success
+        return true
+    }
+    
+    /// Writes a string encoded using the given encoding to the serial peripheral.
+    ///
+    /// - parameter string:   The string to write.
+    /// - parameter encoding: An optional string encoding. The default is `NSUTF8StringEncoding`.
+    /// - parameter lossy:    An optional flag specifying if characters can be
+    ///   removed or altered in conversion. The default is `false`.
+    ///
+    /// - returns: `true` if the string was written.
+    public func writeString(string: String, encoding: NSStringEncoding = NSUTF8StringEncoding, allowLossyConversion lossy: Bool = false) -> Bool {
+        
+        // Encode as data
+        guard let data = string.dataUsingEncoding(encoding, allowLossyConversion: lossy) else {
+            return false
+        }
+        
+        // Write data
+        return writeData(data)
+    }
+}
+
+
 // MARK: - Events
 
 extension BLESerialPeripheral {
