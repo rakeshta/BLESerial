@@ -1,6 +1,6 @@
 //
 //  SwiftUtils.swift
-//  BLE Smart Car Remote
+//  BLESerial
 //
 //  Created by Rakesh TA on 22/02/2016.
 //  Copyright © 2016 Raptor Soft. All rights reserved.
