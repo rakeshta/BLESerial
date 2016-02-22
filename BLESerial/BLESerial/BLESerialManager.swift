@@ -40,18 +40,40 @@ private class WeakReference<T: AnyObject> {
 
 // MARK: - BLESerialManagerScanDelegate
 
+/// The `BLESerialManagerScanDelegate` protocol defines the methods that must be
+/// adopted to listen to scan events.
 public protocol BLESerialManagerScanDelegate: AnyObject {
+    
+    /// Invoked when the serial manager discovers a matching device while scanning.
+    ///
+    /// - parameter serialManager: The serial manager providing the update.
+    /// - parameter peripheral:    The serial device that was discovered.
     func serialManager(serialManager: BLESerialManager, didDiscoverPeripheral peripheral: BLESerialPeripheral)
 }
 
 
 // MARK: - BLESerialManager
 
+/// `BLESerialManager` is a thin wrapper over CoreBluetooth framework that makes
+/// it easier to communicate with Bluetooth LE serial devices.
+///
+/// This module is designed specifically to connect to bluetooth devices like the
+/// HM-10 / HM-11 module that is popular in the hobby electronics world. To tailer
+/// this to your specific bluetooth device, modify the `serialServiceUUID` and
+/// `serialCharacteristicUUID` to match the service & characteristic of your
+/// Bluetooth device. 
+///
+/// For example to find the UIDs on a module that supports AT commands, you may
+/// use commands like `AT+UUID` (or `AT+UUID?`) and `AT+CHAR` (or `AT+CHAR?`). To
+/// find the list of available commands, use `AT+HELP`.
 public final class BLESerialManager: NSObject {
     
     // MARK: - Members
     
+    /// A `CBUUID` object identifying the Bluetooth device's serial service.
     public  var serialServiceUUID             =  CBUUID(string: "FFE0")
+
+    /// The delegate oject to which to send scan events to.
     public  weak var scanDelegate:               BLESerialManagerScanDelegate?
     
     
@@ -66,10 +88,15 @@ public final class BLESerialManager: NSObject {
     
     // MARK: - Accessors
     
+    /// Returns the current state of the central manager.
+    ///
+    /// - seealso: `CBCentralManagerState`
     public  var state:                           CBCentralManagerState {
         return centralManager.state
     }
     
+    /// A boolean indicating if the central manager is currently scanning.
+    @available(iOS 9.0, *)
     public  var isScanning:                      Bool {
         return centralManager.isScanning
     }
@@ -77,6 +104,18 @@ public final class BLESerialManager: NSObject {
     
     // MARK: - Init
     
+    /// Initializes a newly created serial manager.
+    public override convenience init() {
+        self.init(restoreIdentifier: nil)
+    }
+    
+    /// Initializes a newly created serial manager with the given restoration
+    /// identifier.
+    ///
+    /// - parameter restoreIdentifier: A string with a unique identifier for the
+    ///   serial manager.
+    ///
+    /// - seealso: CBCentralManagerOptionRestoreIdentifierKey
     public init(restoreIdentifier: String?) {
         super.init()
         
@@ -133,6 +172,15 @@ extension BLESerialManager {
 
 extension BLESerialManager {
     
+    /// Starts scanning for peripherals advertising the service with UUID set in
+    /// `serialServiceUUID`. Ensure that a `scanDelegate` has been attached before
+    /// starting the scan.
+    ///
+    /// - parameter timeout: an optional timeout after which the scan will 
+    ///   automatically stop
+    ///
+    /// - seealso: `serialServiceUUID`
+    /// - seealso: `scanDelegate`
     public func startScan(timeout timeout: NSTimeInterval? = nil) {
         assert(NSThread.isMainThread(), "FATAL: Should be invoked on main thread")
         
@@ -152,6 +200,7 @@ extension BLESerialManager {
         }
     }
     
+    /// Stops scanning for peripherals
     public func stopScan() {
         assert(NSThread.isMainThread(), "FATAL: Should be invoked on main thread")
 
@@ -250,8 +299,7 @@ extension BLESerialManager: CBCentralManagerDelegate {
         DDLogInfo("\(CurrentFileName()): Connected peripheral - \(peripheral)")
 
         // Notify peripheral of event
-        let serialPeripheral = findSerialPeripheral(cbPeripheral: peripheral)!
-        serialPeripheral.onDidConnect()
+        findSerialPeripheral(cbPeripheral: peripheral)?.onDidConnect()
     }
     
     public func centralManager(central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: NSError?) {
@@ -264,8 +312,7 @@ extension BLESerialManager: CBCentralManagerDelegate {
         }
         
         // Notify peripheral of event
-        let serialPeripheral = findSerialPeripheral(cbPeripheral: peripheral)
-        serialPeripheral?.onDidDisconnect(error: error)
+        findSerialPeripheral(cbPeripheral: peripheral)?.onDidDisconnect(error: error)
         
         // Opportunity to cleanup
         cleanupSerialPeripherals()
@@ -278,7 +325,6 @@ extension BLESerialManager: CBCentralManagerDelegate {
         }
 
         // Notify peripheral of event
-        let serialPeripheral = findSerialPeripheral(cbPeripheral: peripheral)
-        serialPeripheral?.onDidFailToConnect(error: error)
+        findSerialPeripheral(cbPeripheral: peripheral)?.onDidFailToConnect(error: error)
     }
 }
