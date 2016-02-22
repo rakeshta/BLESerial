@@ -11,6 +11,7 @@
 		140D57A61C7A25560051A6AA /* BLESerialManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 140D57A41C7A25560051A6AA /* BLESerialManager.swift */; };
 		140D57A71C7A25560051A6AA /* BLESerialPeripheral.swift in Sources */ = {isa = PBXBuildFile; fileRef = 140D57A51C7A25560051A6AA /* BLESerialPeripheral.swift */; };
 		143AF9521C7AF07C0043FD28 /* CocoaLumberjackSwift.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 143AF9391C7AEE970043FD28 /* CocoaLumberjackSwift.framework */; };
+		143AF97A1C7B636E0043FD28 /* Utils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 143AF9791C7B636E0043FD28 /* Utils.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -135,6 +136,7 @@
 		140D57A41C7A25560051A6AA /* BLESerialManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BLESerialManager.swift; sourceTree = "<group>"; };
 		140D57A51C7A25560051A6AA /* BLESerialPeripheral.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BLESerialPeripheral.swift; sourceTree = "<group>"; };
 		143AF91F1C7AEE970043FD28 /* Lumberjack.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Lumberjack.xcodeproj; path = ../Vendor/CocoaLumberjack/Lumberjack.xcodeproj; sourceTree = "<group>"; };
+		143AF9791C7B636E0043FD28 /* Utils.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Utils.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -172,6 +174,7 @@
 				140D57951C7A250F0051A6AA /* BLESerial.h */,
 				140D57A41C7A25560051A6AA /* BLESerialManager.swift */,
 				140D57A51C7A25560051A6AA /* BLESerialPeripheral.swift */,
+				143AF9681C7B635E0043FD28 /* Internal */,
 				140D57A31C7A251A0051A6AA /* Supporting Files */,
 			);
 			path = BLESerial;
@@ -214,6 +217,15 @@
 				143AF9511C7AEE970043FD28 /* iOSLibStaticTest.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		143AF9681C7B635E0043FD28 /* Internal */ = {
+			isa = PBXGroup;
+			children = (
+				143AF9791C7B636E0043FD28 /* Utils.swift */,
+			);
+			name = Internal;
+			path = "../../../../iOS/BLE Smart Car Remote/BLE Smart Car Remote/Models/Internal";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -417,6 +429,7 @@
 			files = (
 				140D57A61C7A25560051A6AA /* BLESerialManager.swift in Sources */,
 				140D57A71C7A25560051A6AA /* BLESerialPeripheral.swift in Sources */,
+				143AF97A1C7B636E0043FD28 /* Utils.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

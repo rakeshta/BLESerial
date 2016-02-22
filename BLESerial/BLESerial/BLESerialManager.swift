@@ -182,7 +182,7 @@ extension BLESerialManager {
     /// - seealso: `serialServiceUUID`
     /// - seealso: `scanDelegate`
     public func startScan(timeout timeout: NSTimeInterval? = nil) {
-        assert(NSThread.isMainThread(), "FATAL: Should be invoked on main thread")
+        assertIsMainThread()
         
         // Abort if already scanning
         if  isScanning {
@@ -202,7 +202,7 @@ extension BLESerialManager {
     
     /// Stops scanning for peripherals
     public func stopScan() {
-        assert(NSThread.isMainThread(), "FATAL: Should be invoked on main thread")
+        assertIsMainThread()
 
         // Abort if not scanning
         if  isScanning == false {
@@ -225,7 +225,8 @@ extension BLESerialManager {
     
     // MARK: -
     
-    func scanTimeoutTimerFired(timer: NSTimer) {
+    @objc
+    private func scanTimeoutTimerFired(timer: NSTimer) {
         DDLogVerbose("\(CurrentFileName()): Scan timeout occurred")
         stopScan()
     }

@@ -38,6 +38,15 @@ public protocol BLESerialPeripheralDelegate: AnyObject {
     optional func serialPeripheral(serialPerihperal: BLESerialPeripheral, didFailToConnectWithError error: NSError?)
     
     
+    // MARK: - Data
+    
+    /// Invoked when data is received from the peripheral.
+    ///
+    /// - parameter serialPerihperal: The peripheral that sent the data.
+    /// - parameter length:           The length of data that was received.
+    optional func serialPeripheral(serialPerihperal: BLESerialPeripheral, didReceiveBytes length: Int)
+    
+    
     // MARK: - Meta Events
     
     /// Invoked when the peripheral's name changes
@@ -58,24 +67,38 @@ public final class BLESerialPeripheral: NSObject {
     
     // MARK: - Members
     
-    /// That delegate object that should receive peripheral events.
-    public weak var delegate:            BLESerialPeripheralDelegate?
-
-    
-    // MARK: -
-    
     private  let serialManager:          BLESerialManager
     
     internal let cbPeripheral:           CBPeripheral
     
     private  let advertisementData:     [String: AnyObject]
     
-    private  var serialCharacteristic:   CBCharacteristic?
+    private  var serialCharacteristic:   CBCharacteristic? {
+        didSet {
+            if  let ch = oldValue where ch.isNotifying {
+                ch.service.peripheral.setNotifyValue(false, forCharacteristic: ch)
+            }
+            if  let ch = serialCharacteristic where ch.properties.contains(.Notify) {
+                ch.service.peripheral.setNotifyValue(true, forCharacteristic: ch)
+            }
+        }
+    }
+
+    
+    // MARK: -
+    
+    private  let receiveBuffer         = NSMutableData()
     
     
     // MARK: -
     
     private  var onConnectCallback:    ((success: Bool, error: NSError?) -> Void)?
+    
+    
+    // MARK: -
+    
+    /// That delegate object that should receive peripheral events.
+    public weak var delegate:            BLESerialPeripheralDelegate?
     
     
     // MARK: - Accessors
@@ -141,6 +164,7 @@ extension BLESerialPeripheral {
     ///
     /// - seealso: `disconnect`
     public func connect(completion completion: ((success: Bool, error: NSError?) -> Void)?) {
+        assertIsMainThread()
         onConnectCallback = completion
         serialManager.connectPeripheral(self)
     }
@@ -150,12 +174,118 @@ extension BLESerialPeripheral {
     /// On disconnect, the `serialPeripheral:didDisconnectWithError:` method of
     /// the delegate is invoked.
     public func disconnect() {
+        assertIsMainThread()
         
         // Cleanup callbacks
         onConnectCallback = nil
         
         // Disconnect
         serialManager.disconnectPeripheral(self)
+    }
+}
+
+
+// MARK: - Reading Data
+
+extension BLESerialPeripheral {
+    
+    /// Returns `true` if there is data available in the receive buffer.
+    public  var hasBytesAvailable:    Bool {
+        assertIsMainThread()
+        return receiveBuffer.length > 0
+    }
+    
+    /// Returns the length of data available in the receive buffer.
+    public  var bytesAvailableLength: Int {
+        assertIsMainThread()
+        return receiveBuffer.length
+    }
+    
+    
+    // MARK: -
+    
+    /// Reads (and removes) a single byte if data (if available) from the
+    /// receive buffer.
+    ///
+    /// - returns: A single byte if available.
+    public func readByte() -> Int8? {
+
+        // Read a byte of data
+        guard let data = read(maxLength: 1, parse: { $0.data }) else {
+            return nil
+        }
+        
+        // Extract byte
+        var byte: Int8 = 0
+        data.getBytes(&byte, length: 1)
+        
+        // Return byte
+        return byte
+    }
+    
+    /// Reads (and removes) data from the receive buffer if available.
+    ///
+    /// - parameter maxLength: An optional maximum number of bytes to read.
+    ///
+    /// - returns: an `NSData` object with the data extracted from the receive 
+    ///   buffer if available.
+    public func readData(maxLength maxLength: Int? = nil) -> NSData? {
+        return read(maxLength: maxLength) { $0.data }
+    }
+    
+    /// Reads (and removes) data as a `String` from the receive buffer if 
+    /// available using the given encoding.
+    ///
+    /// NOTE: If the data could not be converted to unicode using the given
+    /// encoding, it is not removed from the buffer.
+    ///
+    /// - parameter encoding:  The string encoding of the data. The default is `NSUTF8StringEncoding`.
+    /// - parameter maxLength: An optional maximum number of bytes to read. Exercise
+    ///   caution as some characters may be multi-byte.
+    ///
+    /// - returns: a `String` object with the data extracted using the given encoding
+    ///   if the buffer is not empty and if conversion was succesfull.
+    public func readString(encoding encoding: NSStringEncoding = NSUTF8StringEncoding, maxLength: Int? = nil) -> String? {
+        return read(maxLength: maxLength) { data, remove in
+            
+            // Convert data to string
+            let string = String(data: data, encoding: encoding)
+            
+            // Remove if conversion succesfull
+            remove = string != nil
+            
+            // Return converted string
+            return string
+        }
+    }
+    
+    
+    // MARK: -
+    
+    private func read<T>(maxLength maxLength: Int?, parse: (data: NSData, inout remove: Bool) -> T?) -> T? {
+        assertIsMainThread()
+
+        // Abort if buffer is empty
+        if  receiveBuffer.length == 0 {
+            return nil
+        }
+        
+        // Read data
+        let length = min(receiveBuffer.length, maxLength ?? Int.max)
+        let range  = NSRange(location: 0, length: length)
+        let data   = receiveBuffer.subdataWithRange(range)
+
+        // Parse it using the callback
+        var remove = true
+        let parsed = parse(data: data, remove: &remove)
+        
+        // Delete data that was read if required
+        if  remove {
+            receiveBuffer.replaceBytesInRange(range, withBytes: nil, length: 0)
+        }
+        
+        // Return parsed data
+        return parsed
     }
 }
 
@@ -262,6 +392,29 @@ extension BLESerialPeripheral: CBPeripheralDelegate {
     }
     
     
+    // MARK: -
+    
+    public func peripheral(peripheral: CBPeripheral, didUpdateValueForCharacteristic characteristic: CBCharacteristic, error: NSError?) {
+        
+        // Log error if any & abort
+        if  let errorU = error {
+            DDLogError("\(CurrentFileName()): Error reading value for serial characteristic of peripheral \(cbPeripheral) - \(errorU)")
+            return
+        }
+        
+        // Extract data and append it to the buffer. Then notify the delegate
+        if  let data = characteristic.value {
+            receiveBuffer.appendData(data)
+            
+            // Log event
+            DDLogVerbose("\(CurrentFileName()): Received \(data.length) bytes of data")
+            
+            // Notify delegate
+            delegate?.serialPeripheral?(self, didReceiveBytes: data.length)
+        }
+    }
+    
+
     // MARK: -
     
     public func peripheralDidUpdateName(peripheral: CBPeripheral) {
