@@ -192,9 +192,9 @@ extension BLESerialManager {
         DDLogInfo("\(CurrentFileName()): Starting scan for peripherals")
 
         // Start scan
-        // Do it in next run loop as the central manager needs a moment to get
-        // ready after it is instantiated.
-        Queue.Main.async {
+        // BUG: Give the central manager a moment to start up in case it was just
+        // initialized.
+        Queue.Main.after(0.5) {
             self.centralManager.scanForPeripheralsWithServices([self.serialServiceUUID], options: nil)
         }
         
