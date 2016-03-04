@@ -189,10 +189,14 @@ extension BLESerialManager {
             return
         }
         
-        // Start scan
         DDLogInfo("\(CurrentFileName()): Starting scan for peripherals")
-        
-        centralManager.scanForPeripheralsWithServices([serialServiceUUID], options: nil)
+
+        // Start scan
+        // Do it in next run loop as the central manager needs a moment to get
+        // ready after it is instantiated.
+        Queue.Main.async {
+            self.centralManager.scanForPeripheralsWithServices([self.serialServiceUUID], options: nil)
+        }
         
         // Create a timer to time-out the scan if required
         if  let timeoutU = timeout {
